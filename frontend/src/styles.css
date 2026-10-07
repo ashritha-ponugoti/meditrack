@@ -1,0 +1,105 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f4f6f8;
+  color: #1a1a1a;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: #1f2937;
+  color: white;
+  padding: 1rem 1.5rem;
+}
+.navbar a { color: #cbd5e1; text-decoration: none; }
+.navbar a:hover { color: white; }
+.brand { font-weight: bold; font-size: 1.2rem; margin-right: 1rem; }
+.logout-btn {
+  margin-left: auto;
+  background: #374151;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.page { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.centered {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f2937;
+}
+.centered .card { width: 320px; }
+
+h1, h2 { margin-top: 0; }
+.subtitle { color: #6b7280; font-size: 0.9rem; margin-top: -0.5rem; }
+.hint { color: #6b7280; font-size: 0.85rem; }
+.error { color: #dc2626; font-size: 0.9rem; }
+.warning { color: #b45309; background: #fef3c7; padding: 0.6rem; border-radius: 6px; }
+
+form.form-grid, form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+label { font-size: 0.85rem; color: #374151; margin-top: 0.5rem; }
+input {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+button {
+  margin-top: 1rem;
+  padding: 0.6rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+button:hover { background: #1d4ed8; }
+button:disabled { background: #9ca3af; cursor: default; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  color: white;
+  font-size: 0.75rem;
+  background: #6b7280;
+}
+
+.result-box { margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; }
+
+.transfer-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.transfer-row button {
+  margin-top: 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
