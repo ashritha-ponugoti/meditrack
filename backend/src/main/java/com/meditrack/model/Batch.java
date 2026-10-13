@@ -41,6 +41,11 @@ public class Batch {
 
     private String supplier;
 
+    // Tracks the most recent risk level (LOW/MEDIUM/HIGH) this batch was
+    // emailed about, so the alert scheduler sends a new email only when
+    // the risk level actually changes rather than on every check.
+    private String lastAlertedRiskLevel;
+
     public Batch(Medicine medicine, Pharmacy pharmacy, String batchNumber, Integer quantity,
                  LocalDate manufactureDate, LocalDate expiryDate, String supplier) {
         this.medicine = medicine;

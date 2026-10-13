@@ -2,6 +2,7 @@ package com.meditrack.config;
 
 import com.meditrack.model.*;
 import com.meditrack.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -22,15 +23,18 @@ public class DataSeeder implements CommandLineRunner {
     private final MedicineRepository medicineRepository;
     private final BatchRepository batchRepository;
     private final PasswordEncoder passwordEncoder;
+    private final String demoOwnerEmail;
 
     public DataSeeder(PharmacyRepository pharmacyRepository, UserRepository userRepository,
                        MedicineRepository medicineRepository, BatchRepository batchRepository,
-                       PasswordEncoder passwordEncoder) {
+                       PasswordEncoder passwordEncoder,
+                       @Value("${meditrack.demo.owner-email}") String demoOwnerEmail) {
         this.pharmacyRepository = pharmacyRepository;
         this.userRepository = userRepository;
         this.medicineRepository = medicineRepository;
         this.batchRepository = batchRepository;
         this.passwordEncoder = passwordEncoder;
+        this.demoOwnerEmail = demoOwnerEmail;
     }
 
     @Override
@@ -42,8 +46,11 @@ public class DataSeeder implements CommandLineRunner {
         Pharmacy pharmacyB = pharmacyRepository.save(
                 new Pharmacy("Suburb Pharmacy", "Hyderabad", 17.40, 78.50));
 
-        userRepository.save(new User("owner", passwordEncoder.encode("owner123"), Role.OWNER, pharmacyA));
+        userRepository.save(new User("owner", passwordEncoder.encode("owner123"), Role.OWNER, pharmacyA, demoOwnerEmail));
         userRepository.save(new User("pharmacist", passwordEncoder.encode("pharma123"), Role.PHARMACIST, pharmacyA));
+        // Pharmacy B's owner also uses the same demo inbox, so transfer-suggestion
+        // emails for BOTH sides of a suggested transfer land where you can see them.
+        userRepository.save(new User("owner2", passwordEncoder.encode("owner123"), Role.OWNER, pharmacyB, demoOwnerEmail));
 
         Medicine paracetamol = medicineRepository.save(new Medicine("Paracetamol 500mg", "ABC Pharma"));
         medicineRepository.save(new Medicine("Amoxicillin 250mg", "XYZ Labs"));
@@ -62,5 +69,7 @@ public class DataSeeder implements CommandLineRunner {
 
         System.out.println("=== MediTrack demo data seeded ===");
         System.out.println("Login as owner / owner123  or  pharmacist / pharma123");
+        System.out.println("Alert emails will be sent to: " + demoOwnerEmail
+                + " (set DEMO_OWNER_EMAIL to your real address to receive them)");
     }
 }

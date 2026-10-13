@@ -48,7 +48,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/h2-console/**").permitAll()
+                // /ws/** is left open because the SockJS handshake happens before a
+                // STOMP session exists to carry a JWT - acceptable for this prototype's
+                // low-stakes "refresh signal" messages, but note it as a known
+                // simplification if this ever needed to carry sensitive data.
+                .requestMatchers("/api/auth/**", "/h2-console/**", "/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             .headers(headers -> headers.frameOptions(frame -> frame.disable())) // allow H2 console frames

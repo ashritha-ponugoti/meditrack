@@ -9,6 +9,7 @@ import com.meditrack.repository.MedicineRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,15 +30,18 @@ public class FefoDispensingService {
     private final MedicineRepository medicineRepository;
     private final DispensingTransactionRepository transactionRepository;
     private final AnomalyDetectionService anomalyDetectionService;
+    private final WebSocketNotifier webSocketNotifier;
 
     public FefoDispensingService(BatchRepository batchRepository,
-                                  MedicineRepository medicineRepository,
-                                  DispensingTransactionRepository transactionRepository,
-                                  AnomalyDetectionService anomalyDetectionService) {
+                                 MedicineRepository medicineRepository,
+                                 DispensingTransactionRepository transactionRepository,
+                                 AnomalyDetectionService anomalyDetectionService,
+                                 WebSocketNotifier webSocketNotifier) {
         this.batchRepository = batchRepository;
         this.medicineRepository = medicineRepository;
         this.transactionRepository = transactionRepository;
         this.anomalyDetectionService = anomalyDetectionService;
+        this.webSocketNotifier = webSocketNotifier;
     }
 
     @Transactional
@@ -55,9 +59,15 @@ public class FefoDispensingService {
                 .findByMedicineAndPharmacyAndQuantityGreaterThanOrderByExpiryDateAsc(medicine, pharmacy, 0);
 
         List<DispenseResponse.BatchDeduction> deductions = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        Batch firstUsed = null;
 
         for (Batch batch : candidateBatches) {
             if (remaining <= 0) break;
+
+            // Safety rule: never dispense medicine that is already past its expiry date.
+            if (batch.getExpiryDate().isBefore(today)) continue;
+            if (firstUsed == null) firstUsed = batch;
 
             int takeFromThisBatch = Math.min(batch.getQuantity(), remaining);
             batch.setQuantity(batch.getQuantity() - takeFromThisBatch);
@@ -75,7 +85,7 @@ public class FefoDispensingService {
         // Log one transaction per dispense event (total quantity, not per-batch)
         // and run it through the anomaly check against this medicine's history.
         DispensingTransaction tx = new DispensingTransaction(
-                candidateBatches.get(0), medicine, pharmacy, dispensedBy, request.getQuantity());
+                firstUsed, medicine, pharmacy, dispensedBy, request.getQuantity());
 
         AnomalyDetectionService.Result anomalyResult = anomalyDetectionService.evaluate(medicine, request.getQuantity());
         tx.setAnomalyFlagged(anomalyResult.flagged());
@@ -83,6 +93,8 @@ public class FefoDispensingService {
 
         transactionRepository.save(tx);
         anomalyDetectionService.updateBaseline(medicine, request.getQuantity());
+
+        webSocketNotifier.notifyPharmacy(pharmacy.getId(), "DISPENSE");
 
         return new DispenseResponse(deductions, anomalyResult.flagged(), anomalyResult.score());
     }

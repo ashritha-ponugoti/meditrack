@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Transfer matching rule: for a batch at HIGH expiry risk with surplus
@@ -27,17 +28,34 @@ public class TransferService {
     private final PharmacyRepository pharmacyRepository;
     private final TransferRepository transferRepository;
     private final ExpiryRiskService expiryRiskService;
+    private final WebSocketNotifier webSocketNotifier;
 
     public TransferService(BatchRepository batchRepository, PharmacyRepository pharmacyRepository,
-                            TransferRepository transferRepository, ExpiryRiskService expiryRiskService) {
+                            TransferRepository transferRepository, ExpiryRiskService expiryRiskService,
+                            WebSocketNotifier webSocketNotifier) {
         this.batchRepository = batchRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.transferRepository = transferRepository;
         this.expiryRiskService = expiryRiskService;
+        this.webSocketNotifier = webSocketNotifier;
     }
 
     public List<Transfer> suggestTransfersFor(Pharmacy sourcePharmacy) {
-        List<Transfer> suggestions = new ArrayList<>();
+        return computeSuggestions(sourcePharmacy, false);
+    }
+
+    /**
+     * Same matching logic as suggestTransfersFor, but returns only the
+     * transfers that were newly created on this call (not ones that
+     * already existed as SUGGESTED). Used by the alert scheduler so it
+     * emails about a given transfer suggestion exactly once.
+     */
+    public List<Transfer> suggestAndReturnNewOnly(Pharmacy sourcePharmacy) {
+        return computeSuggestions(sourcePharmacy, true);
+    }
+
+    private List<Transfer> computeSuggestions(Pharmacy sourcePharmacy, boolean newOnly) {
+        List<Transfer> result = new ArrayList<>();
 
         for (ExpiryRiskService.BatchRisk risk : expiryRiskService.assessPharmacy(sourcePharmacy)) {
             if (risk.level() != ExpiryRiskService.RiskLevel.HIGH) continue;
@@ -49,11 +67,25 @@ public class TransferService {
             int suggestedQty = (int) Math.min(risk.estimatedSurplus(), risk.batch().getQuantity());
             if (suggestedQty <= 0) continue;
 
+            // Avoid creating (and re-emailing about) a duplicate suggestion
+            // for the same medicine/source/destination that's still pending.
+            Optional<Transfer> existing = transferRepository
+                    .findByMedicineAndFromPharmacyAndToPharmacyAndStatus(
+                            medicine, sourcePharmacy, bestMatch, TransferStatus.SUGGESTED);
+
+            if (existing.isPresent()) {
+                if (!newOnly) result.add(existing.get());
+                continue;
+            }
+
             Transfer transfer = new Transfer(medicine, sourcePharmacy, bestMatch, suggestedQty);
-            suggestions.add(transferRepository.save(transfer));
+            result.add(transferRepository.save(transfer));
+
+            webSocketNotifier.notifyPharmacy(sourcePharmacy.getId(), "TRANSFER_SUGGESTED");
+            webSocketNotifier.notifyPharmacy(bestMatch.getId(), "TRANSFER_SUGGESTED");
         }
 
-        return suggestions;
+        return result;
     }
 
     private Pharmacy findNearestLowStockPharmacy(Medicine medicine, Pharmacy excluding) {
@@ -82,7 +114,12 @@ public class TransferService {
         Transfer t = transferRepository.findById(transferId)
                 .orElseThrow(() -> new IllegalArgumentException("Transfer not found"));
         t.setStatus(TransferStatus.ACCEPTED);
-        return transferRepository.save(t);
+        Transfer saved = transferRepository.save(t);
+
+        webSocketNotifier.notifyPharmacy(t.getFromPharmacy().getId(), "TRANSFER_UPDATED");
+        webSocketNotifier.notifyPharmacy(t.getToPharmacy().getId(), "TRANSFER_UPDATED");
+
+        return saved;
     }
 
     public Transfer approve(Long transferId) {
@@ -114,7 +151,12 @@ public class TransferService {
             remaining -= take;
         }
 
-        return transferRepository.save(t);
+        Transfer saved = transferRepository.save(t);
+
+        webSocketNotifier.notifyPharmacy(t.getFromPharmacy().getId(), "TRANSFER_UPDATED");
+        webSocketNotifier.notifyPharmacy(t.getToPharmacy().getId(), "TRANSFER_UPDATED");
+
+        return saved;
     }
 
     // Simple haversine distance between two lat/lon points, in kilometers.

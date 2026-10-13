@@ -31,6 +31,7 @@ public class AuthService {
                 .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
 
         String token = jwtUtil.generateToken(user.getUsername(), user.getRole().name());
-        return new AuthResponse(token, user.getUsername(), user.getRole().name());
+        Long pharmacyId = user.getPharmacy() != null ? user.getPharmacy().getId() : null;
+        return new AuthResponse(token, user.getUsername(), user.getRole().name(), pharmacyId);
     }
 }

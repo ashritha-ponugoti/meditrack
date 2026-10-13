@@ -36,11 +36,21 @@ public class User implements UserDetails {
     @JoinColumn(name = "pharmacy_id")
     private Pharmacy pharmacy;
 
+    // Used as the destination for expiry-risk and transfer-suggestion
+    // alert emails. Nullable so pharmacist accounts (who don't receive
+    // alerts in this prototype) aren't forced to have one.
+    private String email;
+
     public User(String username, String password, Role role, Pharmacy pharmacy) {
         this.username = username;
         this.password = password;
         this.role = role;
         this.pharmacy = pharmacy;
+    }
+
+    public User(String username, String password, Role role, Pharmacy pharmacy, String email) {
+        this(username, password, role, pharmacy);
+        this.email = email;
     }
 
     @Override
