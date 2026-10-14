@@ -30,7 +30,7 @@ public class DashboardController {
     // Powers the dashboard trend chart - dispensing history with anomaly flags.
     @GetMapping("/transactions")
     public List<TransactionHistoryDto> transactionHistory(@AuthenticationPrincipal User user) {
-        return transactionRepository.findByPharmacyOrderByTimestampAsc(user.getPharmacy()).stream()
+        return transactionRepository.findWithAllocationsByPharmacyOrderByTimestampAsc(user.getPharmacy()).stream()
                 .map(TransactionHistoryDto::new)
                 .toList();
     }

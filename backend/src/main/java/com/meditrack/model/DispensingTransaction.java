@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "dispensing_transactions")
@@ -18,6 +20,8 @@ public class DispensingTransaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // The FIRST batch this dispense drew from. Kept only so the existing table layout
+    // stays valid; the authoritative per-batch record is `allocations` below.
     @ManyToOne(optional = false)
     @JoinColumn(name = "batch_id")
     private Batch batch;
@@ -43,6 +47,11 @@ public class DispensingTransaction {
     private Boolean anomalyFlagged = false;
     private Double anomalyScore;
 
+    // Every batch this dispense used, with the quantity taken from each.
+    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
+    @OrderBy("id ASC")
+    private List<DispensingAllocation> allocations = new ArrayList<>();
+
     public DispensingTransaction(Batch batch, Medicine medicine, Pharmacy pharmacy,
                                   User dispensedBy, Integer quantity) {
         this.batch = batch;
@@ -50,5 +59,10 @@ public class DispensingTransaction {
         this.pharmacy = pharmacy;
         this.dispensedBy = dispensedBy;
         this.quantity = quantity;
+    }
+
+    public void addAllocation(DispensingAllocation allocation) {
+        allocation.setTransaction(this);
+        this.allocations.add(allocation);
     }
 }

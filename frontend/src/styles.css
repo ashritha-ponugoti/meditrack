@@ -311,46 +311,14 @@ th, td { text-align: left; padding: 0.55rem; border-bottom: 1px solid var(--bord
   font-size: 0.85rem;
 }
 
-/* ===== QR features ===== */
-.qr-box {
-  margin-top: 1.2rem;
-  padding: 1.2rem;
-  background: #faf7f0;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  text-align: center;
-}
-.qr-image {
-  width: 180px;
-  height: 180px;
-  margin: 0.8rem 0;
-  border-radius: 8px;
-  background: white;
-  padding: 8px;
-  border: 1px solid var(--border);
-}
-.scan-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin: 1rem 0;
-}
-.scan-btn {
-  margin-top: 0;
-  background: var(--ink);
-  width: auto;
-  padding: 0.55rem 1rem;
-}
-.scan-btn:hover { background: var(--ink-light); }
-.scan-info { color: var(--accent-2); font-size: 0.88rem; font-weight: 500; }
-.qr-scanner-region {
-  width: 280px;
-  max-width: 100%;
-  margin: 0.8rem 0 1.2rem;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
+/* ===== Smart dispensing ===== */
+.success-msg { color: var(--accent-2); font-weight: 500; font-size: 0.92rem; }
+.section-title { margin: 1.6rem 0 0.4rem; font-size: 1.05rem; }
+.recommend-msg { color: var(--accent-2); font-weight: 600; font-size: 0.92rem; margin: 0.4rem 0 0.6rem; }
+.recommended-row { background: #eef3ec; }
+.recommended-row td { font-weight: 600; }
+.badge-recommended { background: var(--accent-2); }
+.result-box table { margin-top: 0.6rem; }
 
 /* ===== Dashboard: alerts, chart, live badge ===== */
 .card-header-row {
@@ -418,3 +386,107 @@ th, td { text-align: left; padding: 0.55rem; border-bottom: 1px solid var(--bord
   .hero h1 { font-size: 2.2rem; }
   .navbar { flex-wrap: wrap; gap: 1rem; }
 }
+
+/* ===== Login / Register popup ===== */
+.nav-actions { display: flex; align-items: center; gap: 0.7rem; }
+.nav-actions button { margin-top: 0; font-family: inherit; cursor: pointer; }
+.nav-actions .nav-login-link { background: transparent; font-weight: 500; }
+.nav-actions .nav-login-link:hover { background: rgba(243,239,230,0.08); }
+.nav-actions .nav-register-btn {
+  background: linear-gradient(90deg, var(--accent), var(--accent-3));
+  color: #1c1812;
+  border: none;
+  padding: 0.55rem 1.2rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.nav-actions .nav-register-btn:hover { filter: brightness(1.07); }
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+  background: rgba(8, 10, 7, 0.72);
+  backdrop-filter: blur(6px);
+}
+.auth-modal {
+  position: relative;
+  width: 100%;
+  max-width: 410px;
+  margin: auto;
+  padding: 1.8rem 1.8rem 1.4rem;
+  background: #ffffff;
+  color: var(--text);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+.auth-modal h2 { margin-bottom: 0.3rem; }
+.auth-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.6rem;
+  line-height: 1;
+  border-radius: 50%;
+}
+.auth-close:hover { background: #f1ece2; color: var(--text); }
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0.9rem 0 0.6rem;
+  background: #f1ece2;
+  border-radius: 10px;
+}
+.auth-tab {
+  flex: 1;
+  margin: 0;
+  padding: 0.5rem;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 8px;
+}
+.auth-tab:hover { background: rgba(0, 0, 0, 0.05); }
+.auth-tab.active { background: #ffffff; color: var(--text); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14); }
+.auth-password-row { position: relative; display: flex; }
+.auth-password-row input { width: 100%; padding-right: 4rem; }
+.auth-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+.auth-toggle:hover { background: transparent; color: #a65a32; }
+.auth-submit { width: 100%; }
+.auth-demo { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+.auth-demo .demo-fill-btn { margin-top: 0; }
+.auth-switch { margin: 1rem 0 0; text-align: center; font-size: 0.88rem; color: var(--text-muted); }
+.auth-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: inherit;
+}
+.auth-link:hover { background: transparent; text-decoration: underline; }
+.auth-success { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem 0; }
+.auth-success p { margin: 0; font-weight: 600; }

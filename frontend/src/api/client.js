@@ -14,4 +14,20 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// If the server rejects a saved token (expired, or the account no longer exists), forget it
+// and open the login popup instead of leaving the user on a broken page.
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+    if ((status === 401 || status === 403) && !url.includes('/api/auth/') && localStorage.getItem('meditrack_token')) {
+      localStorage.removeItem('meditrack_token');
+      localStorage.removeItem('meditrack_pharmacy_id');
+      window.location.assign('/login');
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default client;

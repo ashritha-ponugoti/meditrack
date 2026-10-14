@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PageTransition from '../components/PageTransition.jsx';
+import AuthModal from '../components/AuthModal.jsx';
 
 const container = {
   hidden: {},
@@ -35,7 +37,26 @@ const features = [
   },
 ];
 
-export default function Landing() {
+// authMode: 'login' or 'register' opens the popup immediately (used by the /login and /register routes).
+export default function Landing({ token, authMode, onAuthenticated, onLogout }) {
+  const navigate = useNavigate();
+  const [modalTab, setModalTab] = useState(authMode || null); // null = popup closed
+
+  function openAuth(tab) {
+    setModalTab(tab);
+  }
+
+  function closeAuth() {
+    setModalTab(null);
+    if (authMode) navigate('/', { replace: true }); // leave the /login or /register address
+  }
+
+  function handleAuthenticated(newToken, pharmacyId) {
+    onAuthenticated(newToken, pharmacyId);
+    setModalTab(null);
+    navigate('/dashboard');
+  }
+
   return (
     <PageTransition>
       <div className="landing">
@@ -59,7 +80,19 @@ export default function Landing() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Link to="/login" className="nav-login-link">Login →</Link>
+            <div className="nav-actions">
+              {token ? (
+                <>
+                  <Link to="/dashboard" className="nav-login-link">Dashboard →</Link>
+                  <button type="button" className="nav-login-link" onClick={onLogout}>Logout</button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="nav-login-link" onClick={() => openAuth('login')}>Login</button>
+                  <button type="button" className="nav-register-btn" onClick={() => openAuth('register')}>Register</button>
+                </>
+              )}
+            </div>
           </motion.div>
         </nav>
 
@@ -86,15 +119,14 @@ export default function Landing() {
           </motion.p>
 
           <motion.div className="hero-actions" variants={item}>
-            <Link to="/login">
-              <motion.button
-                className="primary-btn"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                Try the Demo
-              </motion.button>
-            </Link>
+            <motion.button
+              className="primary-btn"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => (token ? navigate('/dashboard') : openAuth('login'))}
+            >
+              {token ? 'Open Dashboard' : 'Try the Demo'}
+            </motion.button>
             <motion.a
               href="#features"
               className="secondary-link"
@@ -132,6 +164,13 @@ export default function Landing() {
         >
           <p>Built as a Java full-stack technical training project.</p>
         </motion.footer>
+
+        <AuthModal
+          open={modalTab !== null}
+          initialTab={modalTab || 'login'}
+          onClose={closeAuth}
+          onAuthenticated={handleAuthenticated}
+        />
       </div>
     </PageTransition>
   );

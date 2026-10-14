@@ -7,8 +7,6 @@ import com.meditrack.model.Pharmacy;
 import com.meditrack.model.User;
 import com.meditrack.repository.BatchRepository;
 import com.meditrack.repository.MedicineRepository;
-import com.meditrack.service.QrCodeService;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,13 +19,10 @@ public class BatchController {
 
     private final BatchRepository batchRepository;
     private final MedicineRepository medicineRepository;
-    private final QrCodeService qrCodeService;
 
-    public BatchController(BatchRepository batchRepository, MedicineRepository medicineRepository,
-                           QrCodeService qrCodeService) {
+    public BatchController(BatchRepository batchRepository, MedicineRepository medicineRepository) {
         this.batchRepository = batchRepository;
         this.medicineRepository = medicineRepository;
-        this.qrCodeService = qrCodeService;
     }
 
     @GetMapping
@@ -39,13 +34,14 @@ public class BatchController {
     public Batch addBatch(@RequestBody BatchRequest request, @AuthenticationPrincipal User user) {
         validateBatchRequest(request, user.getPharmacy());
 
-        Medicine medicine = medicineRepository.findByNameIgnoreCase(request.getMedicineName())
+        String medicineName = request.getMedicineName().trim();
+        Medicine medicine = medicineRepository.findByNameIgnoreCase(medicineName)
                 .orElseGet(() -> medicineRepository.save(
-                        new Medicine(request.getMedicineName(), request.getManufacturer())));
+                        new Medicine(medicineName, request.getManufacturer())));
 
         Pharmacy pharmacy = user.getPharmacy();
 
-        Batch batch = new Batch(medicine, pharmacy, request.getBatchNumber(), request.getQuantity(),
+        Batch batch = new Batch(medicine, pharmacy, request.getBatchNumber().trim(), request.getQuantity(),
                 request.getManufactureDate(), request.getExpiryDate(), request.getSupplier());
 
         return batchRepository.save(batch);
@@ -53,6 +49,8 @@ public class BatchController {
 
     // Rejects bad input before anything is saved. The message is shown to the user.
     private void validateBatchRequest(BatchRequest r, Pharmacy pharmacy) {
+        if (pharmacy == null)
+            throw new IllegalArgumentException("Your account is not linked to a pharmacy");
         if (r.getMedicineName() == null || r.getMedicineName().isBlank())
             throw new IllegalArgumentException("Medicine name is required");
         if (r.getBatchNumber() == null || r.getBatchNumber().isBlank())
@@ -70,24 +68,6 @@ public class BatchController {
                 .anyMatch(b -> b.getBatchNumber().equalsIgnoreCase(r.getBatchNumber().trim())
                         && b.getMedicine().getName().equalsIgnoreCase(r.getMedicineName().trim()));
         if (duplicate)
-            throw new IllegalArgumentException("Batch " + r.getBatchNumber() + " already exists for this medicine");
-    }
-
-    // Used by the QR scan flow on the Dispense page to look up a batch
-    // (and its medicine) after decoding a "MEDITRACK-BATCH:<id>" payload.
-    @GetMapping("/{id}")
-    public Batch getById(@PathVariable Long id, @AuthenticationPrincipal User user) {
-        Batch batch = batchRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Batch not found"));
-
-        if (!batch.getPharmacy().getId().equals(user.getPharmacy().getId())) {
-            throw new IllegalArgumentException("Batch does not belong to your pharmacy");
-        }
-        return batch;
-    }
-
-    @GetMapping(value = "/{id}/qrcode", produces = MediaType.IMAGE_PNG_VALUE)
-    public byte[] getQrCode(@PathVariable Long id) {
-        return qrCodeService.generateQrPng(id);
+            throw new IllegalArgumentException("Batch " + r.getBatchNumber().trim() + " already exists for this medicine");
     }
 }

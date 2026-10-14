@@ -20,10 +20,22 @@ underserved.
 
 - **Batch-level inventory** — every medicine batch tracked individually by
   expiry date, not just a single stock count per drug.
-- **FEFO dispensing** — dispensing a medicine automatically draws from the
-  batch with the earliest expiry date first, splitting across batches if
-  needed. Enforced in code (`FefoDispensingService`), not left to staff
-  discretion.
+- **Login and registration popup** — the landing page opens a popup with Login
+  and Register tabs. Registering creates a new pharmacy and an owner account
+  (password stored only as a BCrypt hash), and signs the user in. A saved login
+  that the server rejects is cleared automatically and the popup is shown again.
+- **Smart FEFO dispensing** — choosing a medicine on the Dispense page lists
+  its eligible batches (in stock and not expired) and highlights the
+  recommended one: the earliest expiry. Dispensing draws from that batch
+  first and automatically continues to the next batch if more is needed.
+  The backend (`FefoDispensingService`, `FefoAllocator`) validates the
+  request, calculates the allocation, and updates stock in one database
+  transaction with row locking; the page only displays what the backend
+  returns. Expired and empty batches are never used, and a request larger
+  than the eligible stock is rejected without changing anything.
+- **Dispensing history with real allocations** — every dispense stores one
+  row per batch used (`dispensing_allocations`), shown in the dashboard's
+  Recent Dispensing table.
 - **Expiry risk estimation** — for each batch, estimates likely surplus at
   expiry using `stock − (average weekly usage × weeks remaining)`, and
   classifies risk as Low / Medium / High.
@@ -36,14 +48,12 @@ underserved.
   medicine (by straight-line distance), and suggests a transfer. Transfers
   require acceptance by the receiving pharmacy and approval by the owner
   before stock actually moves.
-- **QR codes per batch** — each batch gets a scannable QR code on creation.
-  Scanning it on the Dispense page (via device camera) looks the batch up
-  and auto-fills the medicine name, cutting out manual entry error.
 - **Email alerts (Brevo)** — pharmacy owners receive a real email when a
   batch crosses into MEDIUM/HIGH expiry risk, and when a transfer is
   suggested (both the sending and receiving pharmacy owner are notified).
-  Runs automatically once a day, or on demand via the dashboard's
-  **Check for Alerts Now** button.
+  Runs automatically once a day at 8 AM. A **Check for Alerts Now** button
+  exists in `Dashboard.jsx` (`SHOW_ALERT_BUTTON`) and is off by default until
+  Brevo is configured.
 - **Live dashboard updates (WebSocket)** — the dashboard subscribes to its
   pharmacy's event stream and silently refreshes when a dispense happens
   or a transfer is suggested/updated elsewhere, showing a brief "Live
@@ -60,9 +70,9 @@ underserved.
 
 | Layer | Technology |
 |---|---|
-| Backend | Java 17, Spring Boot 3, Spring Security (JWT), Spring Data JPA/Hibernate, Spring WebSocket (STOMP), ZXing (QR), Brevo API (email) |
+| Backend | Java 17, Spring Boot 3, Spring Security (JWT), Spring Data JPA/Hibernate, Spring WebSocket (STOMP), Brevo API (email) |
 | Database | PostgreSQL (Neon) in production, H2 in-memory for local dev |
-| Frontend | React 18 (Vite), Axios, React Router, Framer Motion, html5-qrcode, Recharts, @stomp/stompjs |
+| Frontend | React 18 (Vite), Axios, React Router, Framer Motion, Recharts, @stomp/stompjs |
 | Deployment | Render (backend), Vercel (frontend), Neon (database) |
 
 ## Project Structure
@@ -74,14 +84,14 @@ meditrack/
 │       ├── model/        JPA entities
 │       ├── repository/   Spring Data repositories
 │       ├── service/      Core logic: FEFO, anomaly detection, expiry risk,
-│       │                 transfers, QR generation, email alerts, WebSocket notifier
+│       │                 transfers, email alerts, WebSocket notifier
 │       ├── controller/   REST endpoints
 │       ├── config/       Security, JWT, CORS, WebSocket config, scheduler, demo data seeder
 │       └── dto/          Request/response objects
 └── frontend/         React app (Vite)
     └── src/
         ├── pages/        Landing, Login, Stock Intake, Dispense, Dashboard
-        ├── components/   NavBar, PageTransition, QrScanner
+        ├── components/   NavBar, PageTransition
         ├── hooks/         usePharmacyEvents (WebSocket subscription)
         └── api/           Axios client with JWT attached
 ```
@@ -122,28 +132,41 @@ Runs on `http://localhost:5173` and talks to the backend at
 
 ## Deploying
 
-1. **Database (Neon):** create a Postgres project, copy the connection string.
-2. **Backend (Render):** deploy the `backend/` folder as a Web Service.
-   Set environment variables: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`,
-   `JWT_SECRET`, `CORS_ORIGINS` (your Vercel frontend URL), and the email
-   variables above if you want alerts live in production.
-3. **Frontend (Vercel):** deploy the `frontend/` folder. Set
-   `VITE_API_URL` to your Render backend's URL.
+Database on Neon, backend on Render (Docker), frontend on Vercel.
+
+1. **Database (Neon):** create a Postgres project. From its connection details
+   build a JDBC URL: `jdbc:postgresql://<host>/<db>?sslmode=require`, and note
+   the username and password separately (do not paste the `postgresql://user:pass@...` form).
+2. **Backend (Render):** New > Web Service, connect the GitHub repo, set
+   **Root Directory** `backend`, **Runtime** Docker (uses `backend/Dockerfile`),
+   **Instance Type** Free. Environment variables:
+   `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET` (random, 32+ characters),
+   `CORS_ORIGINS` (the Vercel URL, no trailing slash), `SPRING_H2_CONSOLE_ENABLED=false`.
+   Optional: `ANOMALY_MIN_TX=5`, and the Brevo variables above.
+3. **Frontend (Vercel):** import the repo, set **Root Directory** `frontend`,
+   add `VITE_API_URL` = the Render URL (no trailing slash), then deploy.
+   `frontend/vercel.json` makes page refreshes on routes like `/dashboard` work.
+4. Go back to Render and set `CORS_ORIGINS` to the final Vercel URL if it changed.
+
+Note: Render's free tier sleeps after 15 minutes without traffic and takes
+about a minute to wake up, so open the site before a demo.
 
 ## Demo Script (for viva / walkthrough)
 
-1. Open the landing page, click **Try the Demo**, log in as `pharmacist`.
-2. Go to **Add Stock**, add a batch with a near expiry date — its QR code
-   appears immediately after submission.
-3. Go to **Dispense**, click **Scan Batch QR** and scan the code (or type
-   the medicine name manually) — the response shows it drew from the
-   earliest-expiring batch first (FEFO). If `localStorage` has two tabs
-   open on the Dashboard, the other tab updates live via WebSocket.
+1. Open the landing page and click **Login** (or **Try the Demo**) to open the login popup, then use **Fill as Owner**. The popup's **Register** tab creates a brand-new pharmacy with you as its owner.
+2. Go to **Add Stock**, add a batch with a near expiry date — a success
+   message confirms it was saved. Bad input (duplicate batch, already expired,
+   negative quantity) is rejected with a clear message.
+3. Go to **Dispense**, type a medicine name — its eligible batches appear with
+   the earliest-expiring one highlighted as recommended. Enter a quantity larger
+   than the first batch holds: the confirmation lists every batch used, the
+   amount taken from each, and what remains. If two tabs are open on the
+   Dashboard, the other tab updates live via WebSocket.
 4. Go to **Dashboard** — see the batch's expiry risk level, the dispensing
-   trend chart, and (if applicable) a transfer suggestion to the seeded
+   trend chart, the Recent Dispensing table (batches used per dispense), and (if applicable) a transfer suggestion to the seeded
    second pharmacy.
-5. Click **Check for Alerts Now** — if Brevo is configured, a real email
-   arrives summarizing the risk/transfer alerts just sent.
+5. (Optional) With Brevo configured and `SHOW_ALERT_BUTTON = true`, click
+   **Check for Alerts Now** — a real email arrives summarizing the alerts.
 
 ## What's Prototype-Level vs. Production-Level
 

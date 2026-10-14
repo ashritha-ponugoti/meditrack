@@ -2,7 +2,6 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import Landing from './pages/Landing.jsx';
-import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import StockIntake from './pages/StockIntake.jsx';
 import Dispense from './pages/Dispense.jsx';
@@ -45,11 +44,10 @@ export default function App() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Landing />} />
-        <Route
-          path="/login"
-          element={token ? <Navigate to="/dashboard" replace /> : <Login onLogin={handleLogin} />}
-        />
+        {/* Login and Register are a popup on the landing page. /login and /register open it directly. */}
+        <Route path="/" element={<Landing token={token} onAuthenticated={handleLogin} onLogout={handleLogout} />} />
+        <Route path="/login" element={<Landing authMode="login" token={token} onAuthenticated={handleLogin} onLogout={handleLogout} />} />
+        <Route path="/register" element={<Landing authMode="register" token={token} onAuthenticated={handleLogin} onLogout={handleLogout} />} />
         <Route
           path="/dashboard"
           element={

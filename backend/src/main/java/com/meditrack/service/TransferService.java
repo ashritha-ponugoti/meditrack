@@ -110,9 +110,13 @@ public class TransferService {
         return best;
     }
 
-    public Transfer accept(Long transferId) {
+    public Transfer accept(Long transferId, Pharmacy actor) {
         Transfer t = transferRepository.findById(transferId)
                 .orElseThrow(() -> new IllegalArgumentException("Transfer not found"));
+        requireInvolved(t, actor);
+        if (t.getStatus() != TransferStatus.SUGGESTED) {
+            throw new IllegalStateException("This transfer is no longer waiting to be accepted");
+        }
         t.setStatus(TransferStatus.ACCEPTED);
         Transfer saved = transferRepository.save(t);
 
@@ -122,9 +126,10 @@ public class TransferService {
         return saved;
     }
 
-    public Transfer approve(Long transferId) {
+    public Transfer approve(Long transferId, Pharmacy actor) {
         Transfer t = transferRepository.findById(transferId)
                 .orElseThrow(() -> new IllegalArgumentException("Transfer not found"));
+        requireInvolved(t, actor);
         if (t.getStatus() != TransferStatus.ACCEPTED) {
             throw new IllegalStateException("Transfer must be accepted by the receiving pharmacy before approval");
         }
@@ -157,6 +162,17 @@ public class TransferService {
         webSocketNotifier.notifyPharmacy(t.getToPharmacy().getId(), "TRANSFER_UPDATED");
 
         return saved;
+    }
+
+    // Only a pharmacy that is part of the transfer may accept or approve it.
+    // The message is the same as "not found" so other pharmacies' transfers are not revealed.
+    private void requireInvolved(Transfer t, Pharmacy actor) {
+        boolean involved = actor != null
+                && (t.getFromPharmacy().getId().equals(actor.getId())
+                    || t.getToPharmacy().getId().equals(actor.getId()));
+        if (!involved) {
+            throw new IllegalArgumentException("Transfer not found");
+        }
     }
 
     // Simple haversine distance between two lat/lon points, in kilometers.

@@ -24,12 +24,12 @@ public class TransferController {
     }
 
     @PostMapping("/{id}/accept")
-    public Transfer accept(@PathVariable Long id) {
-        return transferService.accept(id);
+    public Transfer accept(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return transferService.accept(id, user.getPharmacy());
     }
 
     @PostMapping("/{id}/approve")
-    public Transfer approve(@PathVariable Long id) {
-        return transferService.approve(id);
+    public Transfer approve(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return transferService.approve(id, user.getPharmacy());
     }
 }
